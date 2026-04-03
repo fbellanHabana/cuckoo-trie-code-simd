@@ -1,0 +1,2 @@
+Took 3.19s for 10000000 ops (319ns/op, 3.13Mops/s)
+RESULT: ops=10000000 ms=3193
