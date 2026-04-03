@@ -11,8 +11,8 @@ BINARIES=libcuckoo_trie.so libcuckoo_trie_debug.so test test_debug benchmark
 # won't inline them
 OPTIMIZE_FLAGS=-O3 -fvisibility=hidden -flto -fno-strict-aliasing
 
-# Add -march=haswell to enable the bextr_u32 builtin
-FLAGS=-march=haswell -Wreturn-type -Wuninitialized -Wunused-parameter
+# Add -march=native to enable the bextr_u32 builtin
+FLAGS=-march=native -Wreturn-type -Wuninitialized -Wunused-parameter
 
 CC ?= gcc
 
@@ -22,10 +22,10 @@ clean:
 	rm ${BINARIES}
 
 libcuckoo_trie.so: Makefile ${LIB_DEPS}
-	${CC} ${FLAGS} ${OPTIMIZE_FLAGS} -fPIC -shared -march=haswell -DNDEBUG -o $@ ${LIB_SOURCES}
+	${CC} ${FLAGS} ${OPTIMIZE_FLAGS} -fPIC -shared -march=native -DNDEBUG -o $@ ${LIB_SOURCES}
 
 libcuckoo_trie_debug.so: Makefile ${LIB_DEPS}
-	${CC} ${FLAGS} -O1 -fPIC -shared -march=haswell -g -o $@ ${LIB_SOURCES}
+	${CC} ${FLAGS} -O1 -fPIC -shared -march=native -g -o $@ ${LIB_SOURCES}
 
 test: Makefile ${TEST_DEPS}
 	${CC} ${FLAGS} ${OPTIMIZE_FLAGS} -Wl,-rpath=. -o $@ ${TEST_SOURCES} libcuckoo_trie.so -lpthread
