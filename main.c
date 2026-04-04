@@ -9,7 +9,6 @@
 #include "random.h"
 #include "main.h"
 #include "util.h"
-#include <immintrin.h>
 
 // The root has to have a last symbol in order to have an alternate bucket.
 // The following value was arbitrarily chosen.
@@ -203,117 +202,114 @@ void prefetch_bucket_pair(cuckoo_trie* trie, uint64_t primary_bucket, uint8_t ta
 		__builtin_prefetch((uint8_t*)(&(trie->buckets[secondary_bucket])) + i);
 	}
 }
-/* ---------------------------------------------------------------
- * SIMD helper: given the 64-byte bucket loaded into a zmm register,
- * return a 4-bit mask of which entries satisfy (field & mask) == value.
- * field_col: 0 = parent_color_and_flags, 1 = color_and_tag, 2 = last_symbol
- * Entry byte positions in the bucket: {0,1,2}, {15,16,17}, {30,31,32}, {45,46,47}
- * --------------------------------------------------------------- */
-static const int CT_ENTRY_FIELD_POS[4][3] = {
-    { 0,  1,  2},
-    {15, 16, 17},
-    {30, 31, 32},
-    {45, 46, 47},
-};
-
-static inline int simd_match_field(__m512i bvec, int field_col,
-                                    uint8_t field_mask, uint8_t field_value)
-{
-    __m512i mask_v  = _mm512_set1_epi8((char)field_mask);
-    __m512i value_v = _mm512_set1_epi8((char)(field_value & field_mask));
-    __mmask64 eq    = _mm512_cmpeq_epi8_mask(
-                          _mm512_and_si512(bvec, mask_v), value_v);
-
-    return (int)(((eq >> CT_ENTRY_FIELD_POS[0][field_col]) & 1)        |
-                 (((eq >> CT_ENTRY_FIELD_POS[1][field_col]) & 1) << 1) |
-                 (((eq >> CT_ENTRY_FIELD_POS[2][field_col]) & 1) << 2) |
-                 (((eq >> CT_ENTRY_FIELD_POS[3][field_col]) & 1) << 3));
-}
 
 ct_entry_storage* find_entry_in_bucket_by_color(ct_bucket* bucket,
-                                                 ct_entry_local_copy* result,
-                                                 uint64_t is_secondary,
-                                                 uint64_t tag, uint64_t color)
-{
+												ct_entry_local_copy* result, uint64_t is_secondary,
+												uint64_t tag, uint64_t color) {
+	int i;
+	uint64_t header_mask = 0;
+	uint64_t header_values = 0;
+
+	header_mask |= ((1ULL << TAG_BITS) - 1) << (8*offsetof(ct_entry, color_and_tag));
+	header_values |= tag << (8*offsetof(ct_entry, color_and_tag));
+
+	header_mask |= ((uint64_t)((0xFF << TAG_BITS) & 0xFF)) << (8*offsetof(ct_entry, color_and_tag));
+	header_values |= color << (8*offsetof(ct_entry, color_and_tag) + TAG_BITS);
+
+	header_mask |= FLAG_SECONDARY_BUCKET << (8*offsetof(ct_entry, parent_color_and_flags));
+	if (is_secondary)
+		header_values |= FLAG_SECONDARY_BUCKET << (8*offsetof(ct_entry, parent_color_and_flags));
+
 #ifdef MULTITHREADING
-    uint32_t start_counter = read_int_atomic(&(bucket->write_lock_and_seq));
-    if (start_counter & SEQ_INCREMENT)
-        return NULL;
+	uint32_t start_counter = read_int_atomic(&(bucket->write_lock_and_seq));
+	if (start_counter & SEQ_INCREMENT)
+		return NULL;   // Bucket is being written. The retry loop will call us again.
 #else
-    assert(bucket->write_lock_and_seq == 0);
+	assert(bucket->write_lock_and_seq == 0);
 #endif
 
-    __m512i bvec = _mm512_loadu_si512((const __m512i*)bucket);
+	for (i = 0;i < CUCKOO_BUCKET_SIZE;i++) {
+		read_entry_non_atomic(&(bucket->cells[i]), &(result->value));
 
-    uint8_t color_tag_value = (uint8_t)((color << TAG_BITS) | tag);
-    uint8_t flag_value      = is_secondary ? FLAG_SECONDARY_BUCKET : 0;
-
-    int match = simd_match_field(bvec, 1, 0xFF,                  color_tag_value) &
-                simd_match_field(bvec, 0, FLAG_SECONDARY_BUCKET, flag_value);
-
-    if (!match)
-        return NULL;
-
-    int i = __builtin_ctz(match);
-    read_entry_non_atomic(&(bucket->cells[i]), &(result->value));
+		uint64_t header = *((uint64_t*) (&(result->value)));
+		if ((header & header_mask) == header_values)
+			break;
+	}
+	if (i == CUCKOO_BUCKET_SIZE)
+		return NULL;
 
 #ifdef MULTITHREADING
-    if (read_int_atomic(&(bucket->write_lock_and_seq)) != start_counter)
-        return NULL;
-    result->last_seq = start_counter;
+	if (read_int_atomic(&(bucket->write_lock_and_seq)) != start_counter) {
+		// The bucket changed while we read it. We rely on the retry loop in
+		// find_entry_in_pair_by_color to call us again
+		return NULL;
+	}
+	result->last_seq = start_counter;
 #endif
 
-    result->last_pos = &(bucket->cells[i]);
-    if (!result->last_pos)
-        __builtin_unreachable();
-    return result->last_pos;
+	result->last_pos = &(bucket->cells[i]);
+	if (!result->last_pos)
+		__builtin_unreachable();
+	return result->last_pos;
 }
 
 ct_entry_storage* find_entry_in_bucket_by_parent(ct_bucket* bucket,
-                                                  ct_entry_local_copy* result,
-                                                  uint64_t is_secondary,
-                                                  uint64_t tag,
-                                                  uint64_t last_symbol,
-                                                  uint64_t parent_color)
-{
+												 ct_entry_local_copy* result, uint64_t is_secondary,
+												 uint64_t tag, uint64_t last_symbol, uint64_t parent_color) {
+	int i;
+
+	uint64_t header_mask = 0;
+	uint64_t header_values = 0;
+
+	header_mask |= ((1ULL << TAG_BITS) - 1) << (8*offsetof(ct_entry, color_and_tag));
+	header_values |= tag << (8*offsetof(ct_entry, color_and_tag));
+
+	header_mask |= 0xFFULL << (8*offsetof(ct_entry, last_symbol));
+	header_values |= last_symbol << (8*offsetof(ct_entry, last_symbol));
+
+	const uint64_t parent_color_mask = (0xFFULL << PARENT_COLOR_SHIFT) & 0xFF;
+	header_mask |= parent_color_mask << (8*offsetof(ct_entry, parent_color_and_flags));
+	header_values |= parent_color << (8*offsetof(ct_entry, parent_color_and_flags) + PARENT_COLOR_SHIFT);
+
+	header_mask |= FLAG_SECONDARY_BUCKET << (8*offsetof(ct_entry, parent_color_and_flags));
+	if (is_secondary)
+		header_values |= FLAG_SECONDARY_BUCKET << (8*offsetof(ct_entry, parent_color_and_flags));
+
 #ifdef MULTITHREADING
-    uint32_t start_counter = read_int_atomic(&(bucket->write_lock_and_seq));
-    if (start_counter & SEQ_INCREMENT)
-        return NULL;
+	uint32_t start_counter = read_int_atomic(&(bucket->write_lock_and_seq));
+	if (start_counter & SEQ_INCREMENT)
+		return NULL;   // Bucket is being written. The retry loop will call us again.
 #else
-    assert(bucket->write_lock_and_seq == 0);
+	assert(bucket->write_lock_and_seq == 0);
 #endif
 
-    __m512i bvec = _mm512_loadu_si512((const __m512i*)bucket);
+	for (i = 0;i < CUCKOO_BUCKET_SIZE;i++) {
+		read_entry_non_atomic(&(bucket->cells[i]), &(result->value));
 
-    uint8_t tag_mask = (1 << TAG_BITS) - 1;                      /* 0x0F */
-    uint8_t pcf_mask = ((0xFF << PARENT_COLOR_SHIFT) & 0xFF)
-                       | FLAG_SECONDARY_BUCKET;                   /* 0xF4 */
-    uint8_t pcf_value = (uint8_t)((parent_color << PARENT_COLOR_SHIFT)
-                        | (is_secondary ? FLAG_SECONDARY_BUCKET : 0));
+		uint64_t header = *((uint64_t*) (&(result->value)));
+		if ((header & header_mask) == header_values) {
+			assert(entry_type(&(result->value)) != TYPE_UNUSED);
+			break;
+		}
+	}
 
-    int match = simd_match_field(bvec, 1, tag_mask, (uint8_t)tag)         &
-                simd_match_field(bvec, 2, 0xFF,     (uint8_t)last_symbol) &
-                simd_match_field(bvec, 0, pcf_mask, pcf_value);
-
-    if (!match)
-        return NULL;
-
-    int i = __builtin_ctz(match);
-    read_entry_non_atomic(&(bucket->cells[i]), &(result->value));
-
-    assert(entry_type(&(result->value)) != TYPE_UNUSED);
+	if (i == CUCKOO_BUCKET_SIZE) {
+		return NULL;
+	}
 
 #ifdef MULTITHREADING
-    if (read_int_atomic(&(bucket->write_lock_and_seq)) != start_counter)
-        return NULL;
-    result->last_seq = start_counter;
+	if (read_int_atomic(&(bucket->write_lock_and_seq)) != start_counter) {
+		// The bucket changed while we read it. We rely on the retry loop in
+		// find_entry_in_pair_by_parent to call us again
+		return NULL;
+	}
+	result->last_seq = start_counter;
 #endif
 
-    result->last_pos = &(bucket->cells[i]);
-    if (!result->last_pos)
-        __builtin_unreachable();
-    return result->last_pos;
+	result->last_pos = &(bucket->cells[i]);
+	if (!result->last_pos)
+		__builtin_unreachable();
+	return result->last_pos;
 }
 
 // Searches for an entry with color <color> in the specified pair. Copies the entry
@@ -376,11 +372,15 @@ ct_entry_storage* find_entry_in_pair_by_parent(cuckoo_trie* trie, ct_entry_local
 }
 
 ct_entry_storage* find_free_cell_in_bucket(ct_bucket* bucket) {
-    __m512i bvec  = _mm512_loadu_si512((const __m512i*)bucket);
-    int match = simd_match_field(bvec, 0, TYPE_MASK, TYPE_UNUSED);
-    if (!match)
-        return NULL;
-    return &(bucket->cells[__builtin_ctz(match)]);
+	int i;
+
+	for (i = 0;i < CUCKOO_BUCKET_SIZE;i++) {
+		ct_entry_storage* entry = &(bucket->cells[i]);
+		if (entry_type((ct_entry*) entry) == TYPE_UNUSED)
+			return entry;
+	}
+
+	return NULL;
 }
 
 ct_entry_storage* find_root(cuckoo_trie* trie, ct_entry_local_copy* result) {
