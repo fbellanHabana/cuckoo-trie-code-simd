@@ -1,0 +1,21 @@
+Creating workloads..
+Took 2.82s for 20000000 ops in 2 threads (282ns/op, 3.54Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2824
+Creating workloads..
+Took 2.84s for 20000000 ops in 2 threads (284ns/op, 3.52Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2840
+Creating workloads..
+Took 2.82s for 20000000 ops in 2 threads (282ns/op, 3.55Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2815
+Creating workloads..
+Took 2.82s for 20000000 ops in 2 threads (282ns/op, 3.55Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2819
+Creating workloads..
+Took 2.85s for 20000000 ops in 2 threads (285ns/op, 3.51Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2848
+Creating workloads..
+Took 2.81s for 20000000 ops in 2 threads (281ns/op, 3.56Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2805
+Creating workloads..
+Took 2.85s for 20000000 ops in 2 threads (285ns/op, 3.51Mops/s per thread)
+RESULT: ops=20000000 threads=2 ms=2848

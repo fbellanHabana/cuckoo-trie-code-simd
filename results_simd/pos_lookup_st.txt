@@ -1,0 +1,14 @@
+Took 3.50s for 10000000 ops (350ns/op, 2.86Mops/s)
+RESULT: ops=10000000 ms=3497
+Took 3.41s for 10000000 ops (341ns/op, 2.94Mops/s)
+RESULT: ops=10000000 ms=3407
+Took 3.45s for 10000000 ops (345ns/op, 2.90Mops/s)
+RESULT: ops=10000000 ms=3446
+Took 3.41s for 10000000 ops (341ns/op, 2.93Mops/s)
+RESULT: ops=10000000 ms=3411
+Took 3.42s for 10000000 ops (342ns/op, 2.92Mops/s)
+RESULT: ops=10000000 ms=3420
+Took 3.42s for 10000000 ops (342ns/op, 2.92Mops/s)
+RESULT: ops=10000000 ms=3424
+Took 3.45s for 10000000 ops (345ns/op, 2.90Mops/s)
+RESULT: ops=10000000 ms=3451

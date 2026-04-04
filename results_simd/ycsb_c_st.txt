@@ -1,0 +1,21 @@
+Creating workloads.
+Took 2.83s for 10000000 ops in 1 threads (283ns/op, 3.54Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2826
+Creating workloads.
+Took 2.84s for 10000000 ops in 1 threads (284ns/op, 3.52Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2837
+Creating workloads.
+Took 2.84s for 10000000 ops in 1 threads (284ns/op, 3.52Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2841
+Creating workloads.
+Took 2.86s for 10000000 ops in 1 threads (286ns/op, 3.50Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2855
+Creating workloads.
+Took 2.84s for 10000000 ops in 1 threads (284ns/op, 3.52Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2840
+Creating workloads.
+Took 2.81s for 10000000 ops in 1 threads (281ns/op, 3.56Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2806
+Creating workloads.
+Took 2.83s for 10000000 ops in 1 threads (283ns/op, 3.53Mops/s per thread)
+RESULT: ops=10000000 threads=1 ms=2830

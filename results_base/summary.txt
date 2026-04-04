@@ -1,0 +1,27 @@
+pos-lookup  | avg_ns=319 | avg_mops=3.12
+insert  | avg_ns=444 | avg_mops=2.25
+ycsb-b  | avg_ns=242 | avg_mops=4.13
+ycsb-c  | avg_ns=239 | avg_mops=4.18
+ycsb-f  | avg_ns=299 | avg_mops=3.34
+range-read  | avg_ns=5541 | avg_mops=.18
+mt-pos-lookup --threads 1 | avg_ns=324 | avg_mops=3.08
+mt-pos-lookup --threads 2 | avg_ns=328 | avg_mops=3.04
+mt-pos-lookup --threads 4 | avg_ns=335 | avg_mops=2.98
+mt-pos-lookup --threads 8 | avg_ns=347 | avg_mops=2.87
+mt-pos-lookup --threads 12 | avg_ns=359 | avg_mops=2.78
+mt-pos-lookup --threads 16 | avg_ns=373 | avg_mops=2.68
+mt-pos-lookup --threads 24 | avg_ns=411 | avg_mops=2.43
+mt-ycsb-b --threads 1 | avg_ns=241 | avg_mops=4.13
+mt-ycsb-b --threads 2 | avg_ns=243 | avg_mops=4.10
+mt-ycsb-b --threads 4 | avg_ns=248 | avg_mops=4.02
+mt-ycsb-b --threads 8 | avg_ns=255 | avg_mops=3.91
+mt-ycsb-b --threads 12 | avg_ns=261 | avg_mops=3.82
+mt-ycsb-b --threads 16 | avg_ns=267 | avg_mops=3.73
+mt-ycsb-b --threads 24 | avg_ns=280 | avg_mops=3.57
+mt-ycsb-c --threads 1 | avg_ns=238 | avg_mops=4.18
+mt-ycsb-c --threads 2 | avg_ns=238 | avg_mops=4.19
+mt-ycsb-c --threads 4 | avg_ns=241 | avg_mops=4.13
+mt-ycsb-c --threads 8 | avg_ns=244 | avg_mops=4.09
+mt-ycsb-c --threads 12 | avg_ns=248 | avg_mops=4.02
+mt-ycsb-c --threads 16 | avg_ns=252 | avg_mops=3.96
+mt-ycsb-c --threads 24 | avg_ns=261 | avg_mops=3.82
