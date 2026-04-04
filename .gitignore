@@ -1,0 +1,17 @@
+# Build artifacts
+*.so
+test
+test_debug
+benchmark
+
+# Benchmark results
+results_*/
+baseline_*.txt
+
+# Editor
+*.swp
+*.swo
+.vscode/
+
+# Claud 
+CLAUDE_CODE_CONTEXT.md
