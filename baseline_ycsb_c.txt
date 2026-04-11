@@ -1,3 +1,0 @@
-Creating workloads.
-Took 2.42s for 10000000 ops in 1 threads (242ns/op, 4.14Mops/s per thread)
-RESULT: ops=10000000 threads=1 ms=2418
